@@ -1,0 +1,10 @@
+{
+    "name": "whatsapp-transcriber",
+    "version": "1.0.0",
+    "description": "Transcription service for WhatsApp audio files",
+    "scripts": {
+        "dev": "start .\\.venv\\Scripts\\python.exe transcriptor_auto.py && .\\.venv\\Scripts\\python.exe app.py"
+    },
+    "author": "",
+    "license": "ISC"
+}

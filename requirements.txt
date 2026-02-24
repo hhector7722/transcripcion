@@ -1,0 +1,7 @@
+faster-whisper
+watchdog
+ffmpeg-python
+torch
+fastapi
+uvicorn
+python-multipart

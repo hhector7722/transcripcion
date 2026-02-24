@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcriptor AI - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Plus+Jakarta+Sans:wght@200;400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: rgba(23, 28, 38, 0.7);
+            --accent-color: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1600px;
+            width: 95%;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            height: 70vh;
+        }
+
+        /* Lateral - Lista */
+        .sidebar {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: fadeInLeft 0.8s ease-out;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-color);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-zone p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .transcription-list {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .transcription-item {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            position: relative;
+        }
+
+        .transcription-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--glass-border);
+        }
+
+        .transcription-item.active {
+            background: var(--accent-glow);
+            border-color: var(--accent-color);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ab3030;
+            border: 1px solid rgba(255,100,100,0.3);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+            transition: all 0.2s;
+            z-index: 10;
+            padding: 0;
+            opacity: 0;
+        }
+
+        .transcription-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            background: #ef4444;
+            transform: scale(1.1);
+        }
+
+        .paste-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: text;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .paste-box:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background: rgba(99, 102, 241, 0.05);
+            color: var(--text-primary);
+        }
+
+        .paste-box[contenteditable]:empty::before {
+            content: "Pega tu archivo aquí (Ctrl+V)";
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .transcription-item h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+        }
+
+        /* Contenido Principal */
+        .main-view {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            animation: fadeInRight 0.8s ease-out;
+            position: relative;
+        }
+
+        #empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        #full-content {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .audio-player-container {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        audio {
+            width: 100%;
+            height: 35px;
+            filter: invert(1) hue-rotate(180deg) brightness(1.5);
+        }
+
+        .output-text-area {
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #cbd5e1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        /* Animaciones */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .sidebar {
+                height: 400px;
+            }
+
+            .main-view {
+                height: 600px;
+            }
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent-color);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Transcriptor AI</h1>
+            <div class="status-badge">
+                <div class="pulse"></div>
+                Sistema Activo
+            </div>
+        </header>
+
+        <div class="grid">
+            <aside class="sidebar">
+                <div class="upload-zone" id="upload-zone">
+                    <p>Arrastra audios aquí (.ogg)</p>
+                    <span style="font-size: 0.7rem; color: var(--accent-color);">O haz clic para subir</span>
+                    <input type="file" id="file-input" hidden accept=".ogg,.mp3,.wav,.m4a">
+                </div>
+
+                <div class="paste-box" id="paste-box" contenteditable="true"></div>
+
+                <div class="transcription-list" id="transcription-list">
+                    <!-- Items dinámicos aquí -->
+                </div>
+            </aside>
+
+            <main class="main-view">
+                <div id="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+                        stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.3;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Selecciona una transcripción para ver el contenido</p>
+                </div>
+
+                <div id="full-content">
+                    <div class="header-content">
+                        <h2 id="view-title" font-family="'Outfit'">Nombre del Archivo</h2>
+                        <button id="copy-btn"
+                            style="background: var(--accent-glow); border: 1px solid var(--accent-color); color: white; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem;">Copiar</button>
+                    </div>
+
+                    <div class="audio-player-container" id="player-container">
+                        <audio id="audio-player" controls></audio>
+                    </div>
+
+                    <div class="output-text-area" id="transcription-text">
+                        <!-- El texto aparecerá aquí -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="toast">Archivo subido correctamente</div>
+
+    <script>
+        const transcriptionList = document.getElementById('transcription-list');
+        const emptyState = document.getElementById('empty-state');
+        const fullContent = document.getElementById('full-content');
+        const transcriptionText = document.getElementById('transcription-text');
+        const viewTitle = document.getElementById('view-title');
+        const audioPlayer = document.getElementById('audio-player');
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const copyBtn = document.getElementById('copy-btn');
+
+        let activeId = null;
+
+        async function loadList() {
+            const resp = await fetch('/api/transcriptions');
+            const data = await resp.json();
+
+            transcriptionList.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                const isProcessing = item.status === 'processing';
+
+                div.className = `transcription-item ${activeId === item.id ? 'active' : ''}`;
+                if (isProcessing) {
+                    div.style.opacity = '0.7';
+                    div.style.cursor = 'wait';
+                }
+
+                const dateHtml = isProcessing
+                    ? `<div class="processing-badge"><div class="spinner"></div> Procesando...</div>`
+                    : `<span>${new Date(item.created_at * 1000).toLocaleString()}</span>`;
+
+                div.innerHTML = `
+                    <h3 style="word-break: break-all; padding-right: 12px;">${item.name}</h3>
+                    ${dateHtml}
+                    ${!isProcessing ? `<button class="delete-btn" onclick="deleteItem(event, '${item.id}')" title="Eliminar">&times;</button>` : ''}
+                `;
+
+                if (!isProcessing) {
+                    div.onclick = () => loadTranscription(item.id);
+                }
+
+                transcriptionList.appendChild(div);
+            });
+        }
+
+        async function deleteItem(event, id) {
+            event.stopPropagation(); // Evitar que el click se propague al item y lo seleccione
+            if (!confirm('¿Seguro que quieres eliminar esta transcripción y su audio?')) return;
+
+            try {
+                const resp = await fetch(`/api/transcription/${id}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    showToast('Eliminado correctamente');
+                    if (activeId === id) {
+                        activeId = null;
+                        emptyState.style.display = 'flex';
+                        fullContent.style.display = 'none';
+                    }
+                    loadList();
+                } else {
+                    showToast('Error al eliminar');
+                }
+            } catch (e) {
+                showToast('Error de conexión');
+            }
+        }
+
+        async function loadTranscription(id) {
+            activeId = id;
+            const resp = await fetch(`/api/transcription/${id}`);
+            const data = await resp.json();
+
+            emptyState.style.display = 'none';
+            fullContent.style.display = 'flex';
+            viewTitle.innerText = data.name;
+            transcriptionText.innerText = data.content;
+
+            if (data.audio_url) {
+                audioPlayer.src = data.audio_url;
+                document.getElementById('player-container').style.display = 'flex';
+            } else {
+                document.getElementById('player-container').style.display = 'none';
+            }
+
+            loadList(); // Refrescar estado active
+        }
+
+        // Upload Logic
+        uploadZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = () => {
+            if (fileInput.files.length > 0) {
+                uploadFile(fileInput.files[0]);
+            }
+        };
+
+        // Drag and Drop
+        uploadZone.ondragover = (e) => { e.preventDefault(); uploadZone.style.borderColor = '#6366f1'; };
+        uploadZone.ondragleave = () => { uploadZone.style.borderColor = 'rgba(255, 255, 255, 0.08)'; };
+        uploadZone.ondrop = async (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        };
+
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(transcriptionText.innerText);
+            showToast('¡Copiado al portapapeles!');
+            copyBtn.innerText = '¡Copiado!';
+            setTimeout(() => copyBtn.innerText = 'Copiar', 2000);
+        };
+
+        // Dedicated Paste Box Logic
+        const pasteBox = document.getElementById('paste-box');
+
+        pasteBox.addEventListener('paste', async (e) => {
+            e.preventDefault();
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            let fileFound = false;
+
+            for (let item of items) {
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file) {
+                        fileFound = true;
+                        uploadFile(file);
+                    }
+                }
+            }
+
+            if (!fileFound) {
+                showToast('No se detectó un archivo en el portapapeles');
+            }
+
+            // Limpiar contenido por si acaso algo se pegó
+            pasteBox.innerHTML = '';
+        });
+
+        // Global Paste Fallback
+        window.addEventListener('paste', async (e) => {
+            if (document.activeElement === pasteBox) return; // Ya manejado por pasteBox
+
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) {
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file) uploadFile(file);
+                }
+            }
+        });
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showToast('Subiendo archivo...');
+            uploadZone.style.opacity = '0.5';
+
+            try {
+                const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+                if (resp.ok) {
+                    showToast('¡Archivo subido y en proceso!');
+                    loadList();
+                } else {
+                    showToast('Error al subir el archivo');
+                }
+            } catch (err) {
+                showToast('Error de conexión');
+            } finally {
+                uploadZone.style.opacity = '1';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Polling para nuevos archivos
+        setInterval(loadList, 5000);
+        loadList();
+    </script>
+</body>
+
+</html>

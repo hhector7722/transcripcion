@@ -130,5 +130,10 @@ async def redirect_to_dashboard():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 if __name__ == "__main__":
-    print("Servidor GUI iniciado en http://localhost:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Hugging Face Spaces suele usar el 7860, en local usaremos el 8000 por defecto
+    port = int(os.environ.get("PORT", 8000))
+    # En local es más cómodo usar 127.0.0.1 (localhost), pero para producción/Docker debe ser 0.0.0.0
+    host = os.environ.get("HOST", "127.0.0.1")
+    
+    print(f"Servidor GUI iniciado en http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port)

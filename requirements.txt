@@ -1,7 +1,5 @@
-faster-whisper
-watchdog
-ffmpeg-python
-torch
+# Dependencias mínimas para despliegue en Vercel (límite 500 MB Lambda)
+# Solo lo que app.py necesita. NO incluye faster-whisper/torch (7+ GB).
 fastapi
 uvicorn
 python-multipart

@@ -1,0 +1,9 @@
+# Dependencias completas para desarrollo local con transcripción
+# Usar: pip install -r requirements-local.txt
+faster-whisper
+watchdog
+ffmpeg-python
+torch
+fastapi
+uvicorn
+python-multipart

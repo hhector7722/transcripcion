@@ -1,0 +1,27 @@
+# Entorno virtual Python
+.venv/
+venv/
+env/
+ENV/
+
+# Bytecode y caché
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE y OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Variables de entorno
+.env
+.env.local

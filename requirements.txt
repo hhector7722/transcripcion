@@ -3,3 +3,5 @@
 fastapi
 uvicorn
 python-multipart
+# Firebase (Storage + Firestore) para audios en la nube (móvil)
+firebase-admin

@@ -1,14 +1,15 @@
 # Estado del proyecto – Transcripciones
 
-## Base de datos (Supabase)
+## Firebase (audios en la nube para móvil) ✅
 
-- **Tabla `audios`**: creada por migración en `supabase/migrations/`.
-  - Mantiene solo los **5 audios más recientes**: al insertar el 6º se borra el más antiguo (trigger).
-  - Campos: `id`, `filename`, `storage_path`, `transcription_text`, `file_size_bytes`, `created_at`.
-  - RLS activado (políticas para `authenticated`).
-- **Cómo aplicar**: ejecutar el SQL de la migración en Supabase → SQL Editor, o `supabase db push` si usas CLI.
+- **Storage**: los audios subidos se guardan en Firebase Storage (carpeta `audios/`).
+- **Firestore**: colección `audios` con metadata (filename, storage_path, transcription_text, file_size_bytes, created_at).
+- **Rotación**: se mantienen solo los **5 más recientes**. Al subir el 6º se elimina el más antiguo (doc en Firestore + archivo en Storage).
+- **Endpoints**:
+  - `POST /api/upload`: sube a local y, si Firebase está configurado, también a Storage + Firestore (y aplica rotación).
+  - `GET /api/audios`: lista los 5 audios en Firebase con URL firmada (1h) para descarga/escucha en móvil.
+- **Config**: `.env` con `FIREBASE_CREDENTIALS_JSON` o `GOOGLE_APPLICATION_CREDENTIALS` y `FIREBASE_STORAGE_BUCKET`. Ver `.env.example`.
 
 ## Pendiente
 
-- Conectar la app (FastAPI/transcriptor) con Supabase para guardar/consultar audios en esta tabla.
-- Configurar `SUPABASE_URL` y clave en `.env` (sin subir keys al repo).
+- Actualizar `transcription_text` en Firestore cuando el transcriptor termine (opcional: PATCH o hook desde transcriptor_auto.py).

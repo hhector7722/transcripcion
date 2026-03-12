@@ -1,12 +1,20 @@
 import os
 import shutil
+import time
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from typing import List
+from typing import List, Optional
 import uvicorn
 
+from firebase_config import init_firebase, get_firestore, get_storage_bucket, is_firebase_configured
+
 app = FastAPI(title="Transcriptor Dashboard")
+
+# Firebase (opcional): al arrancar se inicializa si hay env configurado
+init_firebase()
+FIREBASE_AUDIOS_COLLECTION = "audios"
+FIREBASE_MAX_AUDIOS = 5
 
 # Configuración de rutas
 INPUT_DIR = "input_audios"
@@ -20,6 +28,29 @@ for d in [INPUT_DIR, OUTPUT_DIR, PROCESSED_DIR, STATIC_DIR]:
 
 # Servir archivos estáticos (HTML/CSS/JS)
 app.mount("/view", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
+
+def _firebase_keep_only_five() -> None:
+    """Elimina los audios más antiguos en Firestore y Storage si hay más de FIREBASE_MAX_AUDIOS."""
+    if not is_firebase_configured():
+        return
+    db = get_firestore()
+    bucket = get_storage_bucket()
+    coll = db.collection(FIREBASE_AUDIOS_COLLECTION)
+    docs = list(coll.order_by("created_at").stream())
+    to_remove = len(docs) - FIREBASE_MAX_AUDIOS
+    if to_remove <= 0:
+        return
+    for doc in docs[:to_remove]:
+        data = doc.to_dict()
+        storage_path = data.get("storage_path")
+        if storage_path:
+            try:
+                blob = bucket.blob(storage_path)
+                blob.delete()
+            except Exception:
+                pass
+        doc.reference.delete()
 
 @app.get("/api/transcriptions")
 async def list_transcriptions():
@@ -113,17 +144,71 @@ async def delete_transcription(filename: str):
 
 @app.post("/api/upload")
 async def upload_audio(file: UploadFile = File(...)):
-    """Sube un archivo a la carpeta de entrada para ser procesado."""
+    """Sube un archivo a la carpeta de entrada para ser procesado. Si Firebase está configurado, también se sube a la nube (máx. 5)."""
     if not file.filename.lower().endswith(('.ogg', '.mp3', '.wav', '.m4a')):
         raise HTTPException(status_code=400, detail="Formato de archivo no soportado")
-    
+
     file_path = os.path.join(INPUT_DIR, file.filename)
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        return {"filename": file.filename, "status": "queued"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Firebase: subir a Storage y registrar en Firestore; mantener solo los 5 más recientes
+    if is_firebase_configured():
+        try:
+            bucket = get_storage_bucket()
+            db = get_firestore()
+            file_size = os.path.getsize(file_path)
+            safe_name = f"{int(time.time())}_{file.filename}"
+            storage_path = f"audios/{safe_name}"
+            blob = bucket.blob(storage_path)
+            blob.upload_from_filename(file_path, content_type=file.content_type or "audio/ogg")
+            doc_ref = db.collection(FIREBASE_AUDIOS_COLLECTION).add({
+                "filename": file.filename,
+                "storage_path": storage_path,
+                "transcription_text": "",
+                "file_size_bytes": file_size,
+                "created_at": time.time(),
+            })[1]
+            _firebase_keep_only_five()
+        except Exception as e:
+            # No fallar el upload local si Firebase falla
+            pass
+
+    return {"filename": file.filename, "status": "queued"}
+
+
+@app.get("/api/audios")
+async def list_firebase_audios():
+    """Lista los últimos 5 audios en Firebase (Storage + Firestore). Para móvil: incluye URL firmada de descarga."""
+    if not is_firebase_configured():
+        return []
+    db = get_firestore()
+    bucket = get_storage_bucket()
+    docs = list(db.collection(FIREBASE_AUDIOS_COLLECTION).order_by("created_at", direction="DESCENDING").stream())
+    result = []
+    for doc in docs:
+        data = doc.to_dict()
+        storage_path = data.get("storage_path") or ""
+        url = ""
+        if storage_path:
+            try:
+                blob = bucket.blob(storage_path)
+                url = blob.generate_signed_url(expiration=3600, method="GET")
+            except Exception:
+                pass
+        result.append({
+            "id": doc.id,
+            "filename": data.get("filename", ""),
+            "url": url,
+            "transcription_text": data.get("transcription_text") or "",
+            "file_size_bytes": data.get("file_size_bytes"),
+            "created_at": data.get("created_at"),
+        })
+    return result
+
 
 @app.get("/")
 async def redirect_to_dashboard():

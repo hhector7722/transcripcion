@@ -16,18 +16,23 @@ init_firebase()
 FIREBASE_AUDIOS_COLLECTION = "audios"
 FIREBASE_MAX_AUDIOS = 5
 
-# Configuración de rutas
-INPUT_DIR = "input_audios"
-OUTPUT_DIR = "output_text"
-PROCESSED_DIR = "procesados"
-STATIC_DIR = "static"
+# En Vercel el filesystem es solo lectura excepto /tmp; en local usamos el proyecto
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+BASE_DIR = "/tmp/transcripciones" if IS_VERCEL else os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
-# Asegurar directorios
-for d in [INPUT_DIR, OUTPUT_DIR, PROCESSED_DIR, STATIC_DIR]:
-    os.makedirs(d, exist_ok=True)
+INPUT_DIR = os.path.join(BASE_DIR, "input_audios")
+OUTPUT_DIR = os.path.join(BASE_DIR, "output_text")
+PROCESSED_DIR = os.path.join(BASE_DIR, "procesados")
 
-# Servir archivos estáticos (HTML/CSS/JS)
-app.mount("/view", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+# Asegurar directorios (en Vercel solo /tmp es escribible; no fallar si no se puede)
+for d in [INPUT_DIR, OUTPUT_DIR, PROCESSED_DIR]:
+    try:
+        os.makedirs(d, exist_ok=True)
+    except OSError:
+        pass
+if os.path.isdir(STATIC_DIR):
+    app.mount("/view", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 
 def _firebase_keep_only_five() -> None:
@@ -55,35 +60,31 @@ def _firebase_keep_only_five() -> None:
 @app.get("/api/transcriptions")
 async def list_transcriptions():
     """Lista todos los archivos de texto generados."""
-    if not os.path.exists(OUTPUT_DIR):
-        return []
-    
     files = []
-    for f in os.listdir(OUTPUT_DIR):
-        if f.endswith(".txt"):
-            path = os.path.join(OUTPUT_DIR, f)
-            stats = os.stat(path)
-            files.append({
-                "name": f,
-                "id": f,
-                "created_at": stats.st_mtime,
-                "size": stats.st_size,
-                "status": "completed"
-            })
-    # Obtener archivos en proceso
-    for f in os.listdir(INPUT_DIR):
-        if f.lower().endswith(('.ogg', '.mp3', '.wav', '.m4a')):
-            path = os.path.join(INPUT_DIR, f)
-            stats = os.stat(path)
-            files.append({
-                "name": f,
-                "id": f,
-                "created_at": stats.st_mtime,
-                "size": stats.st_size,
-                "status": "processing"
-            })
-            
-    # Ordenar por fecha de creación descendente
+    if os.path.exists(OUTPUT_DIR):
+        for f in os.listdir(OUTPUT_DIR):
+            if f.endswith(".txt"):
+                path = os.path.join(OUTPUT_DIR, f)
+                stats = os.stat(path)
+                files.append({
+                    "name": f,
+                    "id": f,
+                    "created_at": stats.st_mtime,
+                    "size": stats.st_size,
+                    "status": "completed"
+                })
+    if os.path.exists(INPUT_DIR):
+        for f in os.listdir(INPUT_DIR):
+            if f.lower().endswith(('.ogg', '.mp3', '.wav', '.m4a')):
+                path = os.path.join(INPUT_DIR, f)
+                stats = os.stat(path)
+                files.append({
+                    "name": f,
+                    "id": f,
+                    "created_at": stats.st_mtime,
+                    "size": stats.st_size,
+                    "status": "processing"
+                })
     files.sort(key=lambda x: x["created_at"], reverse=True)
     return files
 
@@ -212,7 +213,10 @@ async def list_firebase_audios():
 
 @app.get("/")
 async def redirect_to_dashboard():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.isfile(index_path):
+        return JSONResponse(content={"message": "Transcriptor API", "docs": "/api/audios, /api/transcriptions"}, status_code=200)
+    return FileResponse(index_path)
 
 if __name__ == "__main__":
     # Hugging Face Spaces suele usar el 7860, en local usaremos el 8000 por defecto

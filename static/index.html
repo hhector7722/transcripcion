@@ -456,10 +456,36 @@
         const copyBtn = document.getElementById('copy-btn');
 
         let activeId = null;
+        let processingIds = new Set();
+
+        function playNotificationSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 784;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.25);
+            } catch (e) { /* sin sonido si el navegador no lo permite */ }
+        }
 
         async function loadList() {
             const resp = await fetch('/api/transcriptions');
             const data = await resp.json();
+
+            const nowProcessing = new Set();
+            const wasProcessing = processingIds;
+            data.forEach(item => {
+                if (item.status === 'processing') nowProcessing.add(item.id);
+            });
+            const justFinished = data.filter(item => item.status !== 'processing' && wasProcessing.has(item.id));
+            if (justFinished.length > 0) playNotificationSound();
+            processingIds = nowProcessing;
 
             transcriptionList.innerHTML = '';
             data.forEach(item => {
